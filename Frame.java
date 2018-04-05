@@ -7,17 +7,19 @@ import java.util.Scanner;
 
 public class Frame extends JFrame implements ActionListener {
 
-    private final int ACC_TYPE = 0, ID_NUM = 1, PASSWORD = 2, FULL_NAME = 3;
+    private final int ACC_TYPE = 0, ID_NUM = 1, PASSWORD = 2, FULL_NAME = 3, SCHOOL_NAME = 4;
     private User[] users;
     private int numUsers;
-    private User currentUser;
+    public User currentUser;////////////NOW PUBLIC
 
     Login login = new Login();
     LoggedIn loggedIn = new LoggedIn();
     CreateAccount createAcc = new CreateAccount();
-    QuizGUI quiz = new QuizGUI();
-    // MAKE YOUR GUI A SEPARATE CLASS THAT EXTENDS JPANEL
-    // MAKE SURE BUTTONS AND THINGS LIKE THAT ARE PUBLIC IF YOU NEED TO ACCESS THEM IN HERE.
+/**/InstructorGUI instructorGUI = new InstructorGUI();
+/**/CoursesGUI coursesGUI = new CoursesGUI();
+/**/CreateCourseGUI createCourseGUI = new CreateCourseGUI();
+/**/CourseMadeScreen courseMade = new CourseMadeScreen();
+    ViewCoursesGUI viewCoursesGUI;// = new ViewCoursesGUI(currentUser.getSchool());
 
     public Frame() {
         setTitle("CLEEKER APP");
@@ -35,89 +37,95 @@ public class Frame extends JFrame implements ActionListener {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-
-        quiz.readQuiz("questinos.txt");
     }
 
     @Override
-    // PUT YOUR BUTTONS IN HERE, ACTIONS WITH THEM.
     public void actionPerformed(ActionEvent e) {
         Object src = e.getSource();
-
-
+        
+        //logging in
         if (src == login.login){
             currentUser = login.checkLogin(users);
             if (currentUser == null){
-                JOptionPane.showMessageDialog(null, "Could not find user in database.");
-            } else{
-                switchGUITo(quiz);
+                System.out.println("doesn't work");
+            } else{///////////////////////////////////////////////////////////////////////////
+              if(currentUser.getClass().equals( (new Student()).getClass()))
+                switchGUITo(loggedIn);
+              else 
+               if(currentUser.getClass().equals( (new Instructor()).getClass()))
+                switchGUITo(instructorGUI);
             }
         }
-
-
-
+        //create account
         else if (src == login.createAcc){
             switchGUITo(createAcc);
         }
-
-
-
         else if (src == createAcc.student)
             createAcc.instructor.setSelected(false);
 
-
         else if (src == createAcc.instructor)
             createAcc.student.setSelected(false);
-
-
-
         else if (src == createAcc.cancel){
             switchGUITo(login);
         }
-
-
-        else if (src == createAcc.create){
-            if (createAcc.notEmpty()){
-                createAcc.createUser(users);
-                try {
-                    getUsers();
-                } catch (FileNotFoundException e1) {
-                    e1.printStackTrace();
-                }
-                switchGUITo(login);
-            } else{
-                JOptionPane.showMessageDialog(null, "A required field is empty.");
-            }
+        //instructorGUI to courses GUI//////////////////////
+        else if(src == instructorGUI.goToCoursesButton)
+          switchGUITo(coursesGUI);
+        //coursesGUI to create coursesGUI///////
+        else if(src == coursesGUI.goToCreateCourseButton)
+          switchGUITo(createCourseGUI);
+        //coursesGUI to instructorGUI//////////////
+        else if(src == coursesGUI.backButton)
+          switchGUITo(instructorGUI);
+        //createCourseGUI to coursesGUI
+        else if(src == createCourseGUI.cancelButton)
+          switchGUITo(coursesGUI);
+        //createCourseGUI to course made screen
+        else if(src == createCourseGUI.createCourseButton){
+          new Course(createCourseGUI.courseNameField.getText(),
+                     createCourseGUI.courseCodeField.getText(),
+                     createCourseGUI.courseDescriptionArea.getText(),
+                     currentUser.getName(),
+                     currentUser.getSchool()
+                    );
+          
+          switchGUITo(courseMade);
         }
-
-
-        else if (src == quiz.next){
-            quiz.nextQuestion();
+        //course made screen to coursesGUI
+        else if(src == courseMade.backButton)
+          switchGUITo(coursesGUI);
+        //coursesGUI to viewcoursesGUI
+        else if(src == coursesGUI.viewCoursesButton)
+        {
+          viewCoursesGUI = new ViewCoursesGUI(currentUser.getSchool());
+          viewCoursesGUI.setActionListeners(this);
+          switchGUITo(viewCoursesGUI);
         }
-        else if (src == quiz.previous){
-            quiz.prevQuestion();
-        }
-        else if (src == quiz.submitAll){
-            quiz.submitAll(currentUser.getID());
-            switchGUITo(login);
-        }
+        //viewcoursesGUI to coursesgui
+        else if(src == viewCoursesGUI.backButton)
+          switchGUITo(coursesGUI);
+        
+        //log out////////////////////////////////
+        else if(src == instructorGUI.logoutButton)
+          switchGUITo(login);
+        
     }
 
     public void setActionListeners(){
         login.setActionListeners(this);
         createAcc.setActionListeners(this);
         loggedIn.setActionListeners(this);
-        quiz.setActionListeners(this);
-        // PUT YOUR GUI SCREEN ACTION LISTENERS HERE
+        instructorGUI.setActionListeners(this);////////////////
+        coursesGUI.setActionListeners(this);//////////////
+        createCourseGUI.setActionListeners(this);///////////////
+        courseMade.setActionListeners(this);///////////////////////
+        //viewCoursesGUI.setActionListeners(this);
     }
 
     public void switchGUITo(JPanel pane){
         setContentPane(pane);
         pack();
-        if (pane instanceof QuizGUI)
-            setSize(500,500);
-        else
-            setSize(300,300);
+        setSize(300,300);
     }
 
     public void getUsers() throws FileNotFoundException{
@@ -125,16 +133,19 @@ public class Frame extends JFrame implements ActionListener {
         Scanner in = new Scanner(new File("accounts.txt"));
         numUsers = Integer.parseInt(in.nextLine());
         users = new User[numUsers];
-        String[] args = new String[4];
+        String[] args = new String[5];//////////////////////////////////////////////
         for (int i = 0; i < numUsers; i++){
             args[ACC_TYPE] = in.nextLine();
             args[ID_NUM] = in.nextLine();
             args[PASSWORD] = in.nextLine();
             args[FULL_NAME] = in.nextLine();
+            args[SCHOOL_NAME] = in.nextLine();//////////////////////////////////////
             if (args[ACC_TYPE].equals("S")){
-                users[i] = new Student (args[FULL_NAME], args[ID_NUM], args[PASSWORD]);
+                users[i] = new Student (args[FULL_NAME], args[ID_NUM], args[PASSWORD], args[SCHOOL_NAME]);
             }
-            users[i] = new Instructor(args[FULL_NAME], args[ID_NUM], args[PASSWORD]);
-        }
+            else if(args[ACC_TYPE].equals("I")){/////////////////////////////////////////////////////////////////////////////////
+            users[i] = new Instructor(args[FULL_NAME], args[ID_NUM], args[PASSWORD], args[SCHOOL_NAME]);
+            }
+            }
     }
 }
